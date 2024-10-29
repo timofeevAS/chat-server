@@ -1,6 +1,15 @@
 // Copyright: Alexandr Timofeev 2024 - telegram: timofeev2624.
 #include "../pch.h"
 
+std::string trim(const std::string & str)
+{
+    size_t first = str.find_first_not_of(" \n\r\t");
+    if (first == std::string::npos) return ""; // Empty string case
+
+    size_t last = str.find_last_not_of(" \n\r\t");
+    return str.substr(first, (last - first + 1));
+}
+
 ChatServer::ChatServer(int port)
 {
     setupServerSocket(port); // Initialize the server socket
@@ -156,7 +165,7 @@ void ChatServer::handleClientMessage(int client_fd)
     }
 
     buffer[bytes_read] = '\0';
-    std::string message(buffer);
+    std::string message = trim(buffer);
 
     if (clients[client_fd].empty())
     {
@@ -166,8 +175,9 @@ void ChatServer::handleClientMessage(int client_fd)
     else
     {
         // Broadcast the message with the client's nickname
-        std::string full_message = clients[client_fd] + ": " + message;
-        broadcastMessage(full_message, client_fd);
+        std::stringstream ss;
+        ss << clients[client_fd] << ": " << message << "\n";
+        broadcastMessage(ss.str(), client_fd);
     }
 }
 
