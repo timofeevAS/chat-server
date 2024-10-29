@@ -10,6 +10,7 @@
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <map>
 
 #include <getopt.h>
 #include <syslog.h>
@@ -18,9 +19,12 @@
 #include <sched.h>
 #include <unistd.h>
 #include <time.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+
 
 static inline const std::string WORKING_DIR = "/tmp/";
 
