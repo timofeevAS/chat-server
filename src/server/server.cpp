@@ -299,9 +299,20 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
         ss << "Client " << nickname << " disconnected with /quit";
         Logger::info(ss.str(), "ChatServer::processCommand");
     }
+    else if (cmd == "/?" || cmd == "/help")
+    {
+        std::string help_message = "Available commands:\n";
+        help_message += "/send <name> <message> or /s <name> <message> - Send a private message to a user\n";
+        help_message += "/all <message> or /a <message> - Send a broadcast message to all users\n";
+        help_message += "/users or /u - List all active users\n";
+        help_message += "/quit or /q - Quit the chat\n";
+        help_message += "/? or /help - Show this help message\n";
+        
+        send(client_fd, help_message.c_str(), help_message.size(), 0);
+    }
     else
     {
-        send(client_fd, "Unknown command\n", 16, 0);
+        send(client_fd, "Unknown command: use /help\n", 16, 0);
     }
 }
 
