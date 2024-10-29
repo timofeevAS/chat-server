@@ -3,8 +3,6 @@
 #include "daemon/daemon.h"
 #include "logger/logger.h"
 
-std::string APP_NAME;
-
 int main(int argc, char const *argv[])
 {
     // Starting logger.
