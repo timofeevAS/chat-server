@@ -14,4 +14,8 @@ The server should use non-blocking sockets to handle parallel processing and dat
 
 ## How to run
 
-`TBD`
+```
+make
+./bin/chat-server
+nc localhost 8008
+```
