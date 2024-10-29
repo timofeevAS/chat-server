@@ -181,6 +181,19 @@ void ChatServer::handleClientMessage(int client_fd)
     if (clients[client_fd].empty())
     {
         setNickname(client_fd, message);
+
+        // Send a welcome message to the user
+        std::string welcome_msg = "Welcome to the chat, " + clients[client_fd] + "!\n";
+        welcome_msg += "Type /? to see available commands.\n";
+        send(client_fd, welcome_msg.c_str(), welcome_msg.size(), 0);
+
+        std::string user_list = "\nActive users:\n";
+        for (const auto& [fd, nickname] : clients)
+        {
+            if (!nickname.empty()) // Only include users with set nicknames
+                user_list += " - " + nickname + "\n";
+        }
+        send(client_fd, user_list.c_str(), user_list.size(), 0);
     }
     else if (message[0] == '/')
     {
@@ -200,12 +213,15 @@ void ChatServer::handleClientMessage(int client_fd)
 void ChatServer::broadcastMessage(const std::string& message, int exclude_fd)
 {
     const std::string methodName = "ChatServer::broadcastMessage()";
+    
+    std::string output = message + "\n";
+
     for (const auto& [client_fd, nickname] : clients)
     {
         // Skip clients without a nickname and the excluded client
         if (client_fd != exclude_fd && !nickname.empty())
         {
-            send(client_fd, message.c_str(), message.size(), 0);
+            send(client_fd, output.c_str(), output.size(), 0);
         }
     }
 
