@@ -2,34 +2,47 @@
 #include "pch.h"
 #include "daemon.h"
 
+#include "logger/logger.h"
+
 void Daemon::handleSignal(int signal)
 {
+    const std::string methodName = "Daemon::handleSignal()";
+
     switch (signal)
     {
     case SIGTERM:
-        syslog(LOG_INFO, "Daemon::handleSignal(): Caught SIGTERM.");
+        Logger::info("Caught SIGTERM.", methodName);
         exit(EXIT_SUCCESS);
         break;
     default:
-        syslog(LOG_ERR, "Daemon::handleSignal(): Caught unexpected signal: %d", strsignal(signal));
+        std::stringstream ss;
+        ss << "Caught unexpected signal: " << strsignal(signal);
+        
+        Logger::info(ss.str(), methodName);
         break;
     }
-    syslog(LOG_INFO, "Daemon::handleSignal(): Finished!");
+
+    Logger::info("Finished!", methodName);
 }
 
 void Daemon::start()
 {
+    const std::string methodName = "Daemon::start()";
+
     pid_t pid = fork();
 
     if (pid < 0)
     {
-        syslog(LOG_ERR, "Daemon::start(): Fork process failed with next error: %s", strerror(errno));
+        Logger::errorWithErrno("Fork process failed.", methodName);
         exit(EXIT_FAILURE);
     }
 
     if (pid > 0)
     {
-        syslog(LOG_INFO, "Daemon::start(): Parent process is terminating, PID: %d", getpid());
+        std::stringstream ss;
+        ss << "Parent process is terminating, PID: " << getpid();
+        
+        Logger::info(ss.str(), methodName);
         exit(EXIT_SUCCESS);
     }
 
@@ -37,7 +50,7 @@ void Daemon::start()
 
     if (sid < 0)
     {
-        syslog(LOG_ERR, "Daemon::start(): SID setting is failed with error: %s", strerror(errno));
+        Logger::errorWithErrno("SID setting was failed", methodName);
         exit(EXIT_FAILURE);
     }
 
@@ -45,7 +58,7 @@ void Daemon::start()
 
     if (chdir(WORKING_DIR.c_str()) < 0)
     {
-        syslog(LOG_ERR, "Daemon::start(): Changing working directory was failed with error: %s", strerror(errno));
+        Logger::errorWithErrno("Changing working directory was failed", methodName);
         exit(EXIT_FAILURE);
     }
 
@@ -54,5 +67,5 @@ void Daemon::start()
     close(STDERR_FILENO);
 
     signal(SIGTERM, handleSignal);
-    syslog(LOG_INFO, "Daemon::start(): Finished!");
+    Logger::info("Finished!", methodName);
 }
