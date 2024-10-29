@@ -97,11 +97,21 @@ void ChatServer::askForNickname(int client_fd)
 void ChatServer::setNickname(int client_fd, const std::string& nickname)
 {
     const std::string methodName = "ChatServer::setNickname()";
-    clients[client_fd] = nickname; // Associate the nickname with the client socket
+
+    // Check if nickname is already taken
+    for (const auto& [fd, existing_nickname] : clients) {
+        if (existing_nickname == nickname) {
+            std::string error_msg = "Nickname already taken. Please choose another.\n";
+            send(client_fd, error_msg.c_str(), error_msg.size(), 0);
+            return;
+        }
+    }
+
+    // Associate the nickname with the client socket
+    clients[client_fd] = nickname;
 
     std::stringstream ss;
     ss << "Client " << std::to_string(client_fd) << " set nickname to " << nickname;
-
     Logger::info(ss.str(), methodName);
 
     // Notify other clients that a new user has joined
@@ -138,7 +148,7 @@ void ChatServer::handleNewConnection()
 
 void ChatServer::handleClientMessage(int client_fd)
 {
-    const std::string methodName = "ChatServer::handleClientMessage";
+    const std::string methodName = "ChatServer::handleClientMessage()";
 
     char buffer[1024];
     int bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
@@ -167,35 +177,132 @@ void ChatServer::handleClientMessage(int client_fd)
     buffer[bytes_read] = '\0';
     std::string message = trim(buffer);
 
+    // Check if the client has set a nickname; if not, treat the message as nickname input
     if (clients[client_fd].empty())
     {
-        // If the client has not set a nickname, treat the first message as their nickname
         setNickname(client_fd, message);
+    }
+    else if (message[0] == '/')
+    {
+        // If it's a command, process it
+        processCommand(client_fd, message);
     }
     else
     {
-        // Broadcast the message with the client's nickname
+        // Otherwise, use it as a broadcast message
         std::stringstream ss;
         ss << clients[client_fd] << ": " << message << "\n";
         broadcastMessage(ss.str(), client_fd);
     }
 }
 
+
 void ChatServer::broadcastMessage(const std::string& message, int exclude_fd)
 {
     const std::string methodName = "ChatServer::broadcastMessage()";
     for (const auto& [client_fd, nickname] : clients)
     {
-        if (client_fd != exclude_fd)
+        // Skip clients without a nickname and the excluded client
+        if (client_fd != exclude_fd && !nickname.empty())
         {
-            send(client_fd, message.c_str(), message.size(), 0); // Send message to clients
+            send(client_fd, message.c_str(), message.size(), 0);
         }
     }
 
     std::stringstream ss;
     ss << "Broadcast message: " << message;
-
     Logger::info(ss.str(), methodName);
+}
+
+
+void ChatServer::processCommand(int client_fd, const std::string& command)
+{
+    std::istringstream iss(command);
+    std::string cmd, arg1, arg2;
+
+    iss >> cmd; // Get command
+
+    if (cmd == "/send" || cmd == "/s")
+    {
+        iss >> arg1; // Receiver name
+        std::getline(iss, arg2); // Message
+
+        arg2 = trim(arg2); // Remove spaces and line feeds
+        if (arg1.empty() || arg2.empty())
+        {
+            send(client_fd, "Usage: /send <name> <message>\n", 29, 0);
+            return;
+        }
+
+        // Find recipient by nickname and check if it has a nickname
+        int recipient_fd = -1;
+        for (const auto& [fd, nickname] : clients) {
+            if (nickname == arg1 && !nickname.empty()) {
+                recipient_fd = fd;
+                break;
+            }
+        }
+
+        if (recipient_fd != -1 && !clients[client_fd].empty())
+        {
+            std::string private_msg = "[!] Message from " + clients[client_fd] + ": " + arg2 + "\n";
+            send(recipient_fd, private_msg.c_str(), private_msg.size(), 0);
+        }
+        else if (clients[client_fd].empty())
+        {
+            send(client_fd, "Please set a nickname before sending messages.\n", 46, 0);
+        }
+        else
+        {
+            send(client_fd, "User not found\n", 15, 0);
+        }
+    }
+    else if (cmd == "/all" || cmd == "/a")
+    {
+        std::getline(iss, arg1);
+        arg1 = trim(arg1);
+
+        if (arg1.empty())
+        {
+            send(client_fd, "Usage: /all <message>\n", 22, 0);
+            return;
+        }
+
+        std::string broadcast_msg = "[All] " + clients[client_fd] + ": " + arg1 + "\n";
+        broadcastMessage(broadcast_msg, client_fd);
+    }
+    else if (cmd == "/users" || cmd == "/u")
+    {
+        std::string user_list = "Active users:\n";
+        for (const auto& [fd, nickname] : clients)
+        {
+            if (!nickname.empty()) // Only include users with set nicknames
+                user_list += " - " + nickname + "\n";
+        }
+        send(client_fd, user_list.c_str(), user_list.size(), 0);
+    }
+    else if (cmd == "/quit" || cmd == "/q")
+    {
+        close(client_fd);
+        FD_CLR(client_fd, &master_set);
+
+        std::string nickname = clients[client_fd];
+        clients.erase(client_fd);
+
+        if (!nickname.empty())
+        {
+            std::string leave_message = nickname + " has left the chat.";
+            broadcastMessage(leave_message);
+        }
+
+        std::stringstream ss;
+        ss << "Client " << nickname << " disconnected with /quit";
+        Logger::info(ss.str(), "ChatServer::processCommand");
+    }
+    else
+    {
+        send(client_fd, "Unknown command\n", 16, 0);
+    }
 }
 
 ChatServer::~ChatServer()

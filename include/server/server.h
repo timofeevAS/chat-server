@@ -21,6 +21,7 @@ private:
 
     void askForNickname(int client_fd);
     void setNickname(int client_fd, const std::string& nickname);
+    void processCommand(int client_fd, const std::string& command);
 
 public:
     ChatServer(int port);

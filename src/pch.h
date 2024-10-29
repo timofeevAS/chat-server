@@ -11,6 +11,7 @@
 #include <vector>
 #include <sstream>
 #include <map>
+#include <algorithm>
 
 #include <getopt.h>
 #include <syslog.h>
