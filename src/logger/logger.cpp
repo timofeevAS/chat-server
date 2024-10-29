@@ -1,11 +1,5 @@
 // Copyright: Alexandr Timofeev 2024 - telegram: timofeev2624.
-#include "logger.h"
-
-#include <sstream>
-
-#include "syslog.h"
-#include "string.h"
-
+#include "../pch.h"
 
 void Logger::init(const std::string & appName)
 {

@@ -1,9 +1,5 @@
 // Copyright: Alexandr Timofeev 2024 - telegram: timofeev2624.
-#include "server.h"
-
-#include "logger/logger.h"
-#include "pch.h"
-
+#include "../pch.h"
 
 ChatServer::ChatServer(int port)
 {

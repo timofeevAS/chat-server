@@ -1,29 +1,47 @@
-# Название выходного исполняемого файла
-TARGET = chat
-
-# Компилятор и флаги компиляции
+# Compiler and flags
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17 -g
+CXXFLAGS = -std=c++17 -Wall -Wextra -pedantic
 
-# Список исходных файлов
-SRCS = *.cpp
+# Directories
+SRC_DIR = src
+BUILD_DIR = build
+BIN_DIR = bin
 
-# Список объектных файлов (замена .cpp на .o)
-OBJS = $(SRCS:.cpp=.o)
+# Executable name
+TARGET = $(BIN_DIR)/chat_server
 
-# Команда "all" будет собирать исполняемый файл
+# Source files
+SRCS = $(SRC_DIR)/main.cpp \
+       $(SRC_DIR)/server/server.cpp \
+       $(SRC_DIR)/logger/logger.cpp \
+       $(SRC_DIR)/daemon/daemon.cpp
+
+# Object files
+OBJS = $(SRCS:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
+
+# Include directories
+INCLUDES = -Iinclude
+
+# Build rules
 all: $(TARGET)
 
-# Правило сборки исполняемого файла
+# Link executable
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET)
 
-# Правило компиляции объектных файлов
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+# Compile source files to object files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-# Очистка сборочных файлов
+# Clean build files
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
-.PHONY: all clean
+# Run the server
+run: $(TARGET)
+	$(TARGET)
+
+# Phony targets
+.PHONY: all clean run

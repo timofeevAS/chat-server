@@ -1,8 +1,6 @@
 // Copyright: Alexandr Timofeev 2024 - telegram: timofeev2624.
-#include "pch.h"
-#include "daemon.h"
+#include "../pch.h"
 
-#include "logger/logger.h"
 
 void Daemon::handleSignal(int signal)
 {
