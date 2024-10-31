@@ -353,8 +353,11 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
         std::string user_list = "Active users:\n";
         for (const auto& [fd, nickname] : clients)
         {
-            if (!nickname.empty()) // Only include users with set nicknames
+            if (!nickname.empty())
+            {
+                // Only include users with set nicknames
                 user_list += " - " + nickname + "\n";
+            }
         }
         send(client_fd, user_list.c_str(), user_list.size(), 0);
     }
