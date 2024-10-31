@@ -156,27 +156,45 @@ void ChatServer::handleClientMessage(int client_fd)
 
     if (bytes_read <= 0)
     {
+        // Log entry before attempting disconnection
+        Logger::info("Preparing to disconnect client " + std::to_string(client_fd), methodName);
+
         // Handle client disconnection
         close(client_fd);
         FD_CLR(client_fd, &master_set);
 
-        std::string nickname = clients[client_fd];
-        clients.erase(client_fd);
+        auto client_it = clients.find(client_fd);
+        std::string nickname;
+        if (client_it != clients.end()) {
+            nickname = client_it->second;
+            clients.erase(client_it); // Safely erase client from the map
+        }
 
         if (!nickname.empty())
         {
             std::string leave_message = nickname + " has left the chat.";
-            broadcastMessage(leave_message);
+            broadcastMessage(leave_message, client_fd); // Inform others the client left
         }
 
         std::stringstream ss;
-        ss << "Client disconnected: " << std::to_string(client_fd);
+        ss << "Client disconnected: " << client_fd;
         Logger::info(ss.str(), methodName);
+
+        // Log exit from method to confirm completion
+        Logger::info("Exiting handleClientMessage after disconnecting client", methodName);
+        Logger::info("Finished!", methodName);
         return;
     }
 
     buffer[bytes_read] = '\0';
     std::string message = trim(buffer);
+
+    // Skip processing if message is empty
+    if (message.empty()) {
+        Logger::info("Message empty.", methodName);
+        Logger::info("Finished!", methodName);
+        return;
+    }
 
     // Check if the client has set a nickname; if not, treat the message as nickname input
     if (clients[client_fd].empty())
@@ -186,7 +204,9 @@ void ChatServer::handleClientMessage(int client_fd)
         // Send a welcome message to the user
         std::string welcome_msg = "Welcome to the chat, " + clients[client_fd] + "!\n";
         welcome_msg += "Type /? to see available commands.\n";
-        send(client_fd, welcome_msg.c_str(), welcome_msg.size(), 0);
+        if (send(client_fd, welcome_msg.c_str(), welcome_msg.size(), 0) < 0) {
+            Logger::errorWithErrno("Failed to send welcome message", methodName);
+        }
 
         std::string user_list = "\nActive users:\n";
         for (const auto& [fd, nickname] : clients)
@@ -194,16 +214,19 @@ void ChatServer::handleClientMessage(int client_fd)
             if (!nickname.empty()) // Only include users with set nicknames
                 user_list += " - " + nickname + "\n";
         }
-        send(client_fd, user_list.c_str(), user_list.size(), 0);
+
+        if (send(client_fd, user_list.c_str(), user_list.size(), 0) < 0) {
+            Logger::errorWithErrno("Failed to send user list", methodName);
+        }
     }
-    else if (message[0] == '/')
+    else if (!message.empty() && message[0] == '/')
     {
-        // If it's a command, process it
+        // Process the message as a command if it starts with '/'
         processCommand(client_fd, message);
     }
     else
     {
-        // Otherwise, use it as a broadcast message
+        // Otherwise, treat the message as a broadcast
         std::stringstream ss;
         ss << clients[client_fd] << ": " << message << "\n";
         broadcastMessage(ss.str(), client_fd);
