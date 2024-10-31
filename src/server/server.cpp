@@ -12,15 +12,21 @@ std::string trim(const std::string & str)
 
 ChatServer::ChatServer(int port)
 {
+    const std::string methodName = "ChatServer::ChatServer";
+    Logger::info("Start", methodName);
+
     setupServerSocket(port); // Initialize the server socket
     FD_ZERO(&master_set);    // Initialize the master file descriptor set
     FD_SET(server_fd, &master_set); // Add the server_fd to the master set
     max_fd = server_fd;      // Set the initial maximum file descriptor
+
+    Logger::info("Finished", methodName);
 }
 
 void ChatServer::setupServerSocket(int port)
 {
     const std::string methodName = "ChatServer::setupServerSocket";
+    Logger::info("Start", methodName);
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0)
@@ -49,11 +55,14 @@ void ChatServer::setupServerSocket(int port)
     }
 
     Logger::info("Server socket setup complete.", methodName);
+    Logger::info("Finished", methodName);
 }
 
 void ChatServer::run()
 {
-    const std::string methodName = "ChatServer::run()";
+    const std::string methodName = "ChatServer::run";
+    Logger::info("Start", methodName);
+
     Logger::info("Chat server started and awaiting connections", methodName);
 
     while (true)
@@ -86,23 +95,32 @@ void ChatServer::run()
             ++it;
         }
     }
+
+    Logger::info("Finished", methodName);
 }
 
 void ChatServer::askForNickname(int client_fd)
 {
+    const std::string methodName = "ChatServer::askForNickname";
+    Logger::info("Start", methodName);
+
     std::string message = "Please enter your nickname: ";
     send(client_fd, message.c_str(), message.size(), 0); // Request nickname from the new client
+
+    Logger::info("Finished", methodName);
 }
 
 void ChatServer::setNickname(int client_fd, const std::string& nickname)
 {
-    const std::string methodName = "ChatServer::setNickname()";
+    const std::string methodName = "ChatServer::setNickname";
+    Logger::info("Start", methodName);
 
     // Check if nickname is already taken
     for (const auto& [fd, existing_nickname] : clients) {
         if (existing_nickname == nickname) {
             std::string error_msg = "Nickname already taken. Please choose another.\n";
             send(client_fd, error_msg.c_str(), error_msg.size(), 0);
+            Logger::info("Finished", methodName);
             return;
         }
     }
@@ -117,11 +135,14 @@ void ChatServer::setNickname(int client_fd, const std::string& nickname)
     // Notify other clients that a new user has joined
     std::string join_message = nickname + " has joined the chat!";
     broadcastMessage(join_message, client_fd);
+
+    Logger::info("Finished", methodName);
 }
 
 void ChatServer::handleNewConnection()
 {
-    const std::string methodName = "ChatServer::handleNewConnection()"; 
+    const std::string methodName = "ChatServer::handleNewConnection";
+    Logger::info("Start", methodName);
 
     int client_fd = accept(server_fd, NULL, NULL);
     if (client_fd < 0)
@@ -141,15 +162,17 @@ void ChatServer::handleNewConnection()
 
     std::stringstream ss;
     ss << "New client connected: " << std::to_string(client_fd);
-
     Logger::info(ss.str(), methodName);
+
     askForNickname(client_fd); // Ask the new client for a nickname
+
+    Logger::info("Finished", methodName);
 }
 
 void ChatServer::handleClientMessage(int client_fd)
 {
-    const std::string methodName = "ChatServer::handleClientMessage()";
-    Logger::info("Enter method...", methodName);
+    const std::string methodName = "ChatServer::handleClientMessage";
+    Logger::info("Start", methodName);
 
     char buffer[1024];
     int bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
@@ -180,9 +203,7 @@ void ChatServer::handleClientMessage(int client_fd)
         ss << "Client disconnected: " << client_fd;
         Logger::info(ss.str(), methodName);
 
-        // Log exit from method to confirm completion
-        Logger::info("Exiting handleClientMessage after disconnecting client", methodName);
-        Logger::info("Finished!", methodName);
+        Logger::info("Finished", methodName);
         return;
     }
 
@@ -192,7 +213,7 @@ void ChatServer::handleClientMessage(int client_fd)
     // Skip processing if message is empty
     if (message.empty()) {
         Logger::info("Message empty.", methodName);
-        Logger::info("Finished!", methodName);
+        Logger::info("Finished", methodName);
         return;
     }
 
@@ -231,14 +252,16 @@ void ChatServer::handleClientMessage(int client_fd)
         ss << clients[client_fd] << ": " << message << "\n";
         broadcastMessage(ss.str(), client_fd);
     }
-    Logger::info("Finished!", methodName);
+
+    Logger::info("Finished", methodName);
 }
 
 
 void ChatServer::broadcastMessage(const std::string& message, int exclude_fd)
 {
-    const std::string methodName = "ChatServer::broadcastMessage()";
-    
+    const std::string methodName = "ChatServer::broadcastMessage";
+    Logger::info("Start", methodName);
+
     std::string output = message + "\n";
 
     for (const auto& [client_fd, nickname] : clients)
@@ -253,11 +276,16 @@ void ChatServer::broadcastMessage(const std::string& message, int exclude_fd)
     std::stringstream ss;
     ss << "Broadcast message: " << message;
     Logger::info(ss.str(), methodName);
+
+    Logger::info("Finished", methodName);
 }
 
 
 void ChatServer::processCommand(int client_fd, const std::string& command)
 {
+    const std::string methodName = "ChatServer::processCommand";
+    Logger::info("Start", methodName);
+
     std::istringstream iss(command);
     std::string cmd, arg1, arg2;
 
@@ -272,6 +300,7 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
         if (arg1.empty() || arg2.empty())
         {
             send(client_fd, "Usage: /send <name> <message>\n", 29, 0);
+            Logger::info("Finished", methodName);
             return;
         }
 
@@ -306,6 +335,7 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
         if (arg1.empty())
         {
             send(client_fd, "Usage: /all <message>\n", 22, 0);
+            Logger::info("Finished", methodName);
             return;
         }
 
@@ -338,7 +368,7 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
 
         std::stringstream ss;
         ss << "Client " << nickname << " disconnected with /quit";
-        Logger::info(ss.str(), "ChatServer::processCommand");
+        Logger::info(ss.str(), methodName);
     }
     else if (cmd == "/?" || cmd == "/help")
     {
@@ -355,13 +385,20 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
     {
         send(client_fd, "Unknown command: use /help\n", 16, 0);
     }
+
+    Logger::info("Finished", methodName);
 }
 
 ChatServer::~ChatServer()
 {
+    const std::string methodName = "ChatServer::~ChatServer";
+    Logger::info("Start", methodName);
+
     close(server_fd); // Close the server socket
     for (const auto& [client_fd, nickname] : clients)
     {
         close(client_fd); // Close each client socket
     }
+
+    Logger::info("Finished", methodName);
 }
