@@ -115,24 +115,30 @@ void ChatServer::setNickname(int client_fd, const std::string& nickname)
     const std::string methodName = "ChatServer::setNickname";
     Logger::info("Start", methodName);
 
-    // Check if nickname is already taken
+    // Check if the nickname is already taken
     for (const auto& [fd, existing_nickname] : clients) {
         if (existing_nickname == nickname) {
-            std::string error_msg = "Nickname already taken. Please choose another.\n";
+            // Notify client that the nickname is taken
+            std::string error_msg = "Nickname already taken. Connection will be closed.\n";
             send(client_fd, error_msg.c_str(), error_msg.size(), 0);
-            Logger::info("Finished", methodName);
+            Logger::info("Nickname taken, disconnecting client", methodName);
+
+            // Disconnect client
+            close(client_fd);
+            FD_CLR(client_fd, &master_set);
+            clients.erase(client_fd);
             return;
         }
     }
 
-    // Associate the nickname with the client socket
+    // Assign the unique nickname to the client
     clients[client_fd] = nickname;
 
     std::stringstream ss;
     ss << "Client " << std::to_string(client_fd) << " set nickname to " << nickname;
     Logger::info(ss.str(), methodName);
 
-    // Notify other clients that a new user has joined
+    // Notify other users that a new client has joined
     std::string join_message = nickname + " has joined the chat!";
     broadcastMessage(join_message, client_fd);
 
@@ -339,7 +345,7 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
             return;
         }
 
-        std::string broadcast_msg = "[All] " + clients[client_fd] + ": " + arg1 + "\n";
+        std::string broadcast_msg = "[All] " + clients[client_fd] + ": " + arg1;
         broadcastMessage(broadcast_msg, client_fd);
     }
     else if (cmd == "/users" || cmd == "/u")
