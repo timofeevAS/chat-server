@@ -258,7 +258,7 @@ void ChatServer::handleClientMessage(int client_fd)
     {
         // Otherwise, treat the message as a broadcast
         std::stringstream ss;
-        ss << clients[client_fd] << ": " << message << "\n";
+        ss << clients[client_fd] << ": " << message;
         broadcastMessage(ss.str(), client_fd);
     }
 
