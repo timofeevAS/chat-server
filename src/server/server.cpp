@@ -149,6 +149,7 @@ void ChatServer::handleNewConnection()
 void ChatServer::handleClientMessage(int client_fd)
 {
     const std::string methodName = "ChatServer::handleClientMessage()";
+    Logger::info("Enter method...", methodName);
 
     char buffer[1024];
     int bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
@@ -207,6 +208,7 @@ void ChatServer::handleClientMessage(int client_fd)
         ss << clients[client_fd] << ": " << message << "\n";
         broadcastMessage(ss.str(), client_fd);
     }
+    Logger::info("Finished!", methodName);
 }
 
 
