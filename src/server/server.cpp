@@ -238,8 +238,11 @@ void ChatServer::handleClientMessage(int client_fd)
         std::string user_list = "\nActive users:\n";
         for (const auto& [fd, nickname] : clients)
         {
-            if (!nickname.empty()) // Only include users with set nicknames
+            if (!nickname.empty())
+            {
+                // Only include users with set nicknames  
                 user_list += " - " + nickname + "\n";
+            } 
         }
 
         if (send(client_fd, user_list.c_str(), user_list.size(), 0) < 0) {
@@ -321,7 +324,7 @@ void ChatServer::processCommand(int client_fd, const std::string& command)
 
         if (recipient_fd != -1 && !clients[client_fd].empty())
         {
-            std::string private_msg = "[!] Message from " + clients[client_fd] + ": " + arg2 + "\n";
+            std::string private_msg = "[!] Message from " + clients[client_fd] + ": " + arg2;
             send(recipient_fd, private_msg.c_str(), private_msg.size(), 0);
         }
         else if (clients[client_fd].empty())
